@@ -25,7 +25,7 @@
     <param name="max_payload" type="double" value="$(arg max_payload)"/>
     <param name="max_velocity" type="double" value="$(arg max_velocity)"/>
     <param name="use_ros_control" type="bool" value="True"/>
-    <arg name="prefix" value="$(arg prefix)" />
+    <param name="prefix" value="$(arg prefix)" />
   </node>
 
   <!-- Load controller settings -->
