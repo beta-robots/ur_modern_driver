@@ -223,6 +223,7 @@ public:
 
 	void halt()
 	{
+		robot_.dash_interface_->userExpert();
 		robot_.halt();
 		rt_publish_thread_->join();
 	}
