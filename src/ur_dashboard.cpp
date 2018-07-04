@@ -153,6 +153,7 @@ bool UrDashboard::releaseProtectiveStop()
 	res = res && dashCall(CLOSE_SAFETY_POPUP_REQ, CLOSE_SAFETY_POPUP_RES);
 	res = res && dashCall(CLOSE_POPUP_REQ, CLOSE_POPUP_RES);
 	res = res && powerUp();
+	dashCall(POPUP_REQ, POPUP_RES);
 	dashCall(RESTRICT_USER_REQ, RESTRICT_USER_RES);
 	return res;
 }
