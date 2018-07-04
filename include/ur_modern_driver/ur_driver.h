@@ -23,6 +23,7 @@
 #include <condition_variable>
 #include "ur_realtime_communication.h"
 #include "ur_communication.h"
+#include "ur_dashboard.h"
 #include "do_output.h"
 #include <vector>
 #include <math.h>
@@ -55,6 +56,7 @@ private:
 public:
 	UrRealtimeCommunication* rt_interface_;
 	UrCommunication* sec_interface_;
+	UrDashboard* dash_interface_;
 
 	UrDriver(std::condition_variable& rt_msg_cond,
 			std::condition_variable& msg_cond, std::string host,

@@ -38,6 +38,8 @@ UrDriver::UrDriver(std::condition_variable& rt_msg_cond,
 	new_sockfd_ = -1;
 	sec_interface_ = new UrCommunication(msg_cond, host);
 
+	dash_interface_ = new UrDashboard(host);
+
 	incoming_sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
 	if (incoming_sockfd_ < 0) {
 		print_fatal("ERROR opening socket for reverse communication");
@@ -246,6 +248,8 @@ void UrDriver::closeServo(std::vector<double> positions) {
 }
 
 bool UrDriver::start() {
+	if( !dash_interface_->start() )
+		return false;
 	if (!sec_interface_->start())
 		return false;
 	firmware_version_ = sec_interface_->robot_state_->getVersion();
@@ -264,6 +268,7 @@ void UrDriver::halt() {
 	if (executing_traj_) {
 		UrDriver::stopTraj();
 	}
+	dash_interface_->halt();
 	sec_interface_->halt();
 	rt_interface_->halt();
 	close(incoming_sockfd_);
