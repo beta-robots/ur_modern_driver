@@ -150,8 +150,11 @@ void UrDashboard::userExpert()
 bool UrDashboard::releaseProtectiveStop()
 {
 	bool res = dashCall(UNLOCK_PROTECTIVE_REQ, UNLOCK_PROTECTIVE_RES);
+	ros::Duration(1.0).sleep();
 	res = res && dashCall(CLOSE_SAFETY_POPUP_REQ, CLOSE_SAFETY_POPUP_RES);
+	ros::Duration(1.0).sleep();
 	res = res && dashCall(CLOSE_POPUP_REQ, CLOSE_POPUP_RES);
+	ros::Duration(1.0).sleep();
 	res = res && powerUp();
 	dashCall(POPUP_REQ, POPUP_RES);
 	dashCall(RESTRICT_USER_REQ, RESTRICT_USER_RES);
@@ -161,7 +164,9 @@ bool UrDashboard::releaseProtectiveStop()
 bool UrDashboard::powerUp()
 {
 	bool res = dashCall(POWER_UP_REQ, POWER_UP_RES);
+	ros::Duration(3.0).sleep();
 	res = res && dashCall(BRAKE_RELEASE_REQ, BRAKE_RELEASE_RES);
+	ros::Duration(5.0).sleep();
 	return res;
 }
 
