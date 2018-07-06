@@ -88,15 +88,15 @@ bool UrDashboard::start() {
 	char read_buf[ ] = "Connected: Universal Robots Dashboard Server\n";
 	size_t res = read(dash_sockfd_, read_buf, strlen(read_buf));
 
-	if( !dashCall(POPUP_REQ, POPUP_RES) )
+	if( !releaseProtectiveStop() )
 	{
-		print_fatal("Error poping up via dashboard interface");
+		print_fatal("Error powering up via dashboard interface");
 		return false;
 	}
 
-	if( !powerUp() )
+	if( !dashCall(POPUP_REQ, POPUP_RES) )
 	{
-		print_fatal("Error powering up via dashboard interface");
+		print_fatal("Error poping up via dashboard interface");
 		return false;
 	}
 
