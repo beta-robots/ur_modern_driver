@@ -34,6 +34,7 @@
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "std_msgs/Bool.h"
 #include "control_msgs/FollowJointTrajectoryAction.h"
 #include "actionlib/server/action_server.h"
 #include "actionlib/server/server_goal_handle.h"
@@ -68,6 +69,7 @@ protected:
 	control_msgs::FollowJointTrajectoryResult result_;
 	ros::Subscriber speed_sub_;
 	ros::Subscriber urscript_sub_;
+	ros::Publisher protective_stop_pub_;
 	ros::ServiceServer io_srv_;
 	ros::ServiceServer payload_srv_;
 	std::thread* rt_publish_thread_;
@@ -98,7 +100,7 @@ public:
 		    if (joint_prefix.length() > 0) {
     			sprintf(buf, "Setting prefix to %s", joint_prefix.c_str());
 	    		print_info(buf);
-	        }	
+	        }
         }
 		joint_names.push_back(joint_prefix + "shoulder_pan_joint");
 		joint_names.push_back(joint_prefix + "shoulder_lift_joint");
@@ -202,17 +204,20 @@ public:
 				print_debug(
 						"The action server for this driver has been started");
 			}
-			mb_publish_thread_ = new std::thread(
-					boost::bind(&RosWrapper::publishMbMsg, this));
-			speed_sub_ = nh_.subscribe("ur_driver/joint_speed", 1,
-					&RosWrapper::speedInterface, this);
-			urscript_sub_ = nh_.subscribe("ur_driver/URScript", 1,
-					&RosWrapper::urscriptInterface, this);
 
-			io_srv_ = nh_.advertiseService("ur_driver/set_io",
-					&RosWrapper::setIO, this);
-			payload_srv_ = nh_.advertiseService("ur_driver/set_payload",
-					&RosWrapper::setPayload, this);
+			mb_publish_thread_ = new std::thread(boost::bind(&RosWrapper::publishMbMsg, this));
+			speed_sub_ = nh_.subscribe("ur_driver/joint_speed", 1, &RosWrapper::speedInterface, this);
+			urscript_sub_ = nh_.subscribe("ur_driver/URScript", 1, &RosWrapper::urscriptInterface, this);
+
+			protective_stop_pub_ = nh_.advertise<std_msgs::Bool>("ur_driver/protective_stop", 1, true);
+			std_msgs::Bool status;
+			status.data = false;
+			protective_stop_pub_.publish(status);
+
+			io_srv_ = nh_.advertiseService("ur_driver/set_io", &RosWrapper::setIO, this);
+			payload_srv_ = nh_.advertiseService("ur_driver/set_payload", &RosWrapper::setPayload, this);
+			release_protective_stop_srv_ = nh_.advertiseService("ur_driver/release_protective_stop", &RosWrapper::releaseProtectiveStop, this);
+			set_expert_user_srv_ = nh_.advertiseService("ur_driver/set_expert_mode", &RosWrapper::setExpertUser, this);
 		}
 	}
 
@@ -315,7 +320,7 @@ private:
 			print_error(result_.error_string);
 			return;
 		}
-        
+
 		if (!has_velocities()) {
 			result_.error_code = result_.INVALID_GOAL;
 			result_.error_string = "Received a goal without velocities";
@@ -343,7 +348,7 @@ private:
 		}
 
 		reorder_traj_joints(goal.trajectory);
-		
+
 		if (!start_positions_match(goal.trajectory, 0.01)) {
 			result_.error_code = result_.INVALID_GOAL;
 			result_.error_string = "Goal start doesn't match current pose";
@@ -424,7 +429,23 @@ private:
 		return resp.success;
 	}
 
-	bool validateJointNames() {
+	bool releaseProtectiveStop(std_srvs::TriggerRequest& __req, std_srvs::TriggerResponse& __res)
+	{
+		__res.success = robot_.dash_interface_->releaseProtectiveStop();
+		std_msgs::Bool status;
+		status.data = false;
+		protective_stop_pub_.publish(status);
+		return true;
+	}
+
+	bool setExpertUser(std_srvs::EmptyRequest& __req, std_srvs::EmptyResponse& __res)
+	{
+		robot_.dash_interface_->userExpert();
+		return true;
+	}
+
+	bool validateJointNames()
+	{
 		std::vector<std::string> actual_joint_names = robot_.getJointNames();
 		actionlib::ActionServer<control_msgs::FollowJointTrajectoryAction>::Goal goal =
 				*goal_handle_.getGoal();
@@ -609,7 +630,7 @@ private:
 
 			// Broadcast transform
 			if( tf_pub.trylock() )
-			{			
+			{
 				tf_pub.msg_.transforms[0].header.stamp = ros_time;
 				if (angle < 1e-16) {
 					tf_pub.msg_.transforms[0].transform.rotation.x = 0;
@@ -633,7 +654,7 @@ private:
 			std::vector<double> tcp_speed = robot_.rt_interface_->robot_state_->getTcpSpeedActual();
 
 			if( tool_vel_pub.trylock() )
-			{			
+			{
 				tool_vel_pub.msg_.header.stamp = ros_time;
 				tool_vel_pub.msg_.twist.linear.x = tcp_speed[0];
 				tool_vel_pub.msg_.twist.linear.y = tcp_speed[1];
@@ -773,8 +794,12 @@ private:
 				if (robot_.sec_interface_->robot_state_->isEmergencyStopped()
 						and !warned) {
 					print_error("Emergency stop pressed!");
-				} else if (robot_.sec_interface_->robot_state_->isProtectiveStopped()
-						and !warned) {
+				}
+				else if (robot_.sec_interface_->robot_state_->isProtectiveStopped() and !warned)
+				{
+					std_msgs::Bool status;
+					status.data = true;
+					protective_stop_pub_.publish(status);
 					print_error("Robot is protective stopped!");
 				}
 				if (has_goal_) {
