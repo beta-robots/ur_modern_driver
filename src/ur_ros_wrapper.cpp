@@ -36,6 +36,7 @@
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "geometry_msgs/PoseStamped.h"
+#include "std_msgs/Bool.h"
 #include "control_msgs/FollowJointTrajectoryAction.h"
 #include "actionlib/server/action_server.h"
 #include "actionlib/server/server_goal_handle.h"
@@ -70,6 +71,7 @@ protected:
 	control_msgs::FollowJointTrajectoryResult result_;
 	ros::Subscriber speed_sub_;
 	ros::Subscriber urscript_sub_;
+	ros::Publisher protective_stop_pub_;
 	ros::ServiceServer io_srv_;
 	ros::ServiceServer payload_srv_;
 	ros::ServiceServer release_protective_stop_srv_;
@@ -213,6 +215,11 @@ public:
 			mb_publish_thread_ = new std::thread(boost::bind(&RosWrapper::publishMbMsg, this));
 			speed_sub_ = nh_.subscribe("ur_driver/joint_speed", 1, &RosWrapper::speedInterface, this);
 			urscript_sub_ = nh_.subscribe("ur_driver/URScript", 1, &RosWrapper::urscriptInterface, this);
+
+			protective_stop_pub_ = nh_.advertise<std_msgs::Bool>("ur_driver/protective_stop", 1, true);
+			std_msgs::Bool status;
+			status.data = false;
+			protective_stop_pub_.publish(status);
 
 			io_srv_ = nh_.advertiseService("ur_driver/set_io", &RosWrapper::setIO, this);
 			payload_srv_ = nh_.advertiseService("ur_driver/set_payload", &RosWrapper::setPayload, this);
@@ -442,6 +449,9 @@ private:
 	bool releaseProtectiveStop(std_srvs::TriggerRequest& __req, std_srvs::TriggerResponse& __res)
 	{
 		__res.success = robot_.dash_interface_->releaseProtectiveStop();
+		std_msgs::Bool status;
+		status.data = false;
+		protective_stop_pub_.publish(status);
 		return true;
 	}
 
@@ -807,6 +817,9 @@ private:
 				}
 				else if (robot_.sec_interface_->robot_state_->isProtectiveStopped() and !warned)
 				{
+					std_msgs::Bool status;
+					status.data = true;
+					protective_stop_pub_.publish(status);
 					print_error("Robot is protective stopped!");
 				}
 				if (has_goal_)
