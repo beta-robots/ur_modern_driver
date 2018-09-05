@@ -31,6 +31,8 @@
 
 #include "ros/ros.h"
 #include <ros/console.h>
+#include <std_srvs/Trigger.h>
+#include <std_srvs/Empty.h>
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/WrenchStamped.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -216,8 +218,6 @@ public:
 
 			io_srv_ = nh_.advertiseService("ur_driver/set_io", &RosWrapper::setIO, this);
 			payload_srv_ = nh_.advertiseService("ur_driver/set_payload", &RosWrapper::setPayload, this);
-			release_protective_stop_srv_ = nh_.advertiseService("ur_driver/release_protective_stop", &RosWrapper::releaseProtectiveStop, this);
-			set_expert_user_srv_ = nh_.advertiseService("ur_driver/set_expert_mode", &RosWrapper::setExpertUser, this);
 		}
 	}
 
@@ -427,21 +427,6 @@ private:
 		else
 			resp.success = true;
 		return resp.success;
-	}
-
-	bool releaseProtectiveStop(std_srvs::TriggerRequest& __req, std_srvs::TriggerResponse& __res)
-	{
-		__res.success = robot_.dash_interface_->releaseProtectiveStop();
-		std_msgs::Bool status;
-		status.data = false;
-		protective_stop_pub_.publish(status);
-		return true;
-	}
-
-	bool setExpertUser(std_srvs::EmptyRequest& __req, std_srvs::EmptyResponse& __res)
-	{
-		robot_.dash_interface_->userExpert();
-		return true;
 	}
 
 	bool validateJointNames()
