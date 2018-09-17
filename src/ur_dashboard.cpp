@@ -145,6 +145,7 @@ void UrDashboard::userRestricted()
 void UrDashboard::userExpert()
 {
 	dashCall(EXPERT_USER_REQ, EXPERT_USER_RES);
+	dashCall(CLOSE_POPUP_REQ, CLOSE_POPUP_RES);
 }
 
 bool UrDashboard::releaseProtectiveStop()
