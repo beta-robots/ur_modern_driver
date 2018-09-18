@@ -797,7 +797,12 @@ private:
 				}
 				warned = true;
 			} else
+			{
 				warned = false;
+				std_msgs::Bool status;
+				status.data = false;
+				protective_stop_pub_.publish(status);
+			}
 
 			robot_.sec_interface_->robot_state_->finishedReading();
 
